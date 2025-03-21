@@ -73,7 +73,7 @@ const translations = {
     appDescription: "कैंपस में अपना रास्ता खोजें",
 
     // Initial messages
-    welcomeMessage: "नमस्ते! मैं आपका कैंपस नेविगेशन सहायक हूं। आप वर्तमान में कहां स्थित हैं?",
+    welcomeMessage: "नमस्ते! मैं आपका ���ैंपस नेविगेशन सहायक हूं। आप वर्तमान में कहां स्थित हैं?",
 
     // Location selection
     selectLocation: "अपना वर्तमान स्थान चुनें:",
@@ -513,14 +513,35 @@ function Message({ message, isUser }) {
 }
 
 // Location Button Grid component
-function LocationButtonGrid({ locations, onSelect }) {
+function LocationButtonGrid({ locations, onSelect, filterText = "" }) {
+  // Sort locations based on the filter text
+  const sortedLocations = [...locations].sort((a, b) => {
+    const aStartsWithFilter = a.toLowerCase().startsWith(filterText.toLowerCase())
+    const bStartsWithFilter = b.toLowerCase().startsWith(filterText.toLowerCase())
+    const aContainsFilter = a.toLowerCase().includes(filterText.toLowerCase())
+    const bContainsFilter = b.toLowerCase().includes(filterText.toLowerCase())
+
+    // First priority: starts with filter
+    if (aStartsWithFilter && !bStartsWithFilter) return -1
+    if (!aStartsWithFilter && bStartsWithFilter) return 1
+
+    // Second priority: contains filter
+    if (aContainsFilter && !bContainsFilter) return -1
+    if (!aContainsFilter && bContainsFilter) return 1
+
+    // Default: alphabetical
+    return a.localeCompare(b)
+  })
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-      {locations.map((location) => (
+      {sortedLocations.map((location) => (
         <Button
           key={location}
           variant="outline"
-          className="justify-start h-auto py-2 px-3 text-left"
+          className={`justify-start h-auto py-2 px-3 text-left ${
+            filterText && location.toLowerCase().includes(filterText.toLowerCase()) ? "border-primary" : ""
+          }`}
           onClick={() => onSelect(location)}
         >
           <MapPin className="h-4 w-4 mr-2 text-primary flex-shrink-0" />
@@ -593,6 +614,7 @@ function ProgressIndicator({ currentStep, totalSteps }) {
   )
 }
 
+// Update the CampusNavigationBot component to handle text input and filtering
 function CampusNavigationBot() {
   const { t, language, getCampusData } = useLanguage()
   const [messages, setMessages] = useState([
@@ -612,6 +634,8 @@ function CampusNavigationBot() {
   const [showDestinationSelection, setShowDestinationSelection] = useState(false)
   const [showNavigationControls, setShowNavigationControls] = useState(false)
   const [showEndOptions, setShowEndOptions] = useState(false)
+  const [locationFilter, setLocationFilter] = useState("")
+  const [destinationFilter, setDestinationFilter] = useState("")
 
   const messagesEndRef = useRef(null)
 
@@ -653,13 +677,27 @@ function CampusNavigationBot() {
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    // Add a small delay to ensure DOM is updated
+    const timer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+
+        // Force scroll to bottom of container as a fallback
+        const container = document.querySelector(".max-h-\\[60vh\\]")
+        if (container) {
+          container.scrollTop = container.scrollHeight
+        }
+      }
+    }, 100)
+
+    return () => clearTimeout(timer)
   }, [messages])
 
   // Handle location selection
   const handleLocationSelect = (location) => {
     setCurrentLocation(location)
     setShowLocationSelection(false)
+    setLocationFilter("")
 
     setMessages((prev) => [
       ...prev,
@@ -680,6 +718,7 @@ function CampusNavigationBot() {
 
     setDestination(destination)
     setShowDestinationSelection(false)
+    setDestinationFilter("")
 
     setMessages((prev) => [...prev, { sender: "user", text: destination }])
 
@@ -860,11 +899,113 @@ function CampusNavigationBot() {
     setShowDestinationSelection(false)
     setShowNavigationControls(false)
     setShowEndOptions(false)
+    setLocationFilter("")
+    setDestinationFilter("")
   }
 
   // Handle input change
   const handleInputChange = (e) => {
-    setInput(e.target.value)
+    const value = e.target.value
+    setInput(value)
+
+    // Update filters based on conversation state
+    if (showLocationSelection) {
+      setLocationFilter(value)
+    } else if (showDestinationSelection) {
+      setDestinationFilter(value)
+    }
+  }
+
+  // Process text input for chat
+  const processTextInput = (text) => {
+    const data = getCampusData()
+    const lowerText = text.toLowerCase()
+
+    // Check for greetings
+    const greetings = ["hi", "hello", "hey", "greetings", "howdy"]
+    if (greetings.some((greeting) => lowerText === greeting || lowerText.startsWith(`${greeting} `))) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "bot",
+          text: `${t("welcomeMessage")} ${showLocationSelection ? t("selectLocation") : showDestinationSelection ? t("selectDestination") : ""}`,
+        },
+      ])
+      return
+    }
+
+    // Check if input matches a location
+    if (showLocationSelection) {
+      const matchedLocation = data.locations.find(
+        (loc) => loc.toLowerCase() === lowerText || loc.toLowerCase().includes(lowerText),
+      )
+
+      if (matchedLocation) {
+        handleLocationSelect(matchedLocation)
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: `I couldn't find "${text}" in the available locations. Please select from the list or try another location.`,
+          },
+        ])
+      }
+    }
+    // Check if input matches a destination
+    else if (showDestinationSelection) {
+      const matchedDestination = data.locations.find(
+        (loc) => loc !== currentLocation && (loc.toLowerCase() === lowerText || loc.toLowerCase().includes(lowerText)),
+      )
+
+      if (matchedDestination) {
+        handleDestinationSelect(matchedDestination)
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "bot",
+            text: `I couldn't find "${text}" as a destination. Please select from the list or try another destination.`,
+          },
+        ])
+      }
+    }
+    // Handle other inputs during navigation
+    else if (showNavigationControls) {
+      const nextStepPhrases = ["next", "continue", "next step", "next direction"]
+      const reachedPhrases = ["reached", "i reached", "arrived", "i arrived", "i am here", "i'm here"]
+
+      if (nextStepPhrases.some((phrase) => lowerText.includes(phrase))) {
+        if (!waitingForMilestone) {
+          handleNextDirection()
+        }
+      } else if (reachedPhrases.some((phrase) => lowerText.includes(phrase))) {
+        if (waitingForMilestone) {
+          handleMilestoneReached()
+        }
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "bot", text: "Please use the navigation controls to continue your journey." },
+        ])
+      }
+    }
+    // Handle inputs at the end of navigation
+    else if (showEndOptions) {
+      const newDirectionPhrases = ["new", "another", "different", "somewhere else"]
+      const endPhrases = ["end", "finish", "stop", "quit", "exit", "bye", "goodbye"]
+
+      if (newDirectionPhrases.some((phrase) => lowerText.includes(phrase))) {
+        handleNewDirections()
+      } else if (endPhrases.some((phrase) => lowerText.includes(phrase))) {
+        handleEndChat()
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          { sender: "bot", text: "Would you like to get directions to somewhere else or end the navigation?" },
+        ])
+      }
+    }
   }
 
   // Handle form submission
@@ -872,7 +1013,13 @@ function CampusNavigationBot() {
     e.preventDefault()
     if (!input.trim()) return
 
+    // Add user message to chat
     setMessages((prev) => [...prev, { sender: "user", text: input }])
+
+    // Process the input
+    processTextInput(input)
+
+    // Clear input field
     setInput("")
   }
 
@@ -899,18 +1046,22 @@ function CampusNavigationBot() {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 max-h-[60vh] overflow-y-auto">
+        <CardContent className="p-4 max-h-[60vh] overflow-y-auto scroll-pt-4" id="message-container">
           <div className="space-y-4">
             {messages.map((message, index) => (
               <Message key={index} message={message.text} isUser={message.sender === "user"} />
             ))}
-            <div ref={messagesEndRef} />
+            <div ref={messagesEndRef} className="h-1" />
 
             {/* Location Selection */}
             {showLocationSelection && (
               <div className="mt-4 animate-fadeIn">
                 <p className="text-sm font-medium mb-2">{t("selectLocation")}</p>
-                <LocationButtonGrid locations={data.locations} onSelect={handleLocationSelect} />
+                <LocationButtonGrid
+                  locations={data.locations}
+                  onSelect={handleLocationSelect}
+                  filterText={locationFilter}
+                />
               </div>
             )}
 
@@ -918,7 +1069,11 @@ function CampusNavigationBot() {
             {showDestinationSelection && (
               <div className="mt-4 animate-fadeIn">
                 <p className="text-sm font-medium mb-2">{t("selectDestination")}</p>
-                <LocationButtonGrid locations={availableDestinations} onSelect={handleDestinationSelect} />
+                <LocationButtonGrid
+                  locations={availableDestinations}
+                  onSelect={handleDestinationSelect}
+                  filterText={destinationFilter}
+                />
               </div>
             )}
 
@@ -952,11 +1107,7 @@ function CampusNavigationBot() {
               onChange={handleInputChange}
               className="flex-1"
             />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={showLocationSelection || showDestinationSelection || showNavigationControls || showEndOptions}
-            >
+            <Button type="submit" size="icon">
               <Send className="h-4 w-4" />
             </Button>
           </form>
