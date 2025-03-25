@@ -53,10 +53,10 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
   language: "en",
-  setLanguage: (_) => {},
-  t: (_) => "",
+  setLanguage: (_lang) => {}, // eslint-disable-line @typescript-eslint/no-unused-vars
+  t: (_key) => "", // eslint-disable-line @typescript-eslint/no-unused-vars
   getCampusData: () => ({ locations: [], paths: [] }),
-})
+});
 
 // Translations
 const translations: Translations = {
