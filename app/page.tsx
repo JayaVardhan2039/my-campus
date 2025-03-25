@@ -73,7 +73,7 @@ const translations = {
     appDescription: "कैंपस में अपना रास्ता खोजें",
 
     // Initial messages
-    welcomeMessage: "नमस्ते! मैं आपका ���ैंपस नेविगेशन सहायक हूं। आप वर्तमान में कहां स्थित हैं?",
+    welcomeMessage: "नमस्ते! मैं आपका कैंपस नेविगेशन सहायक हूं। आप वर्तमान में कहां स्थित हैं?",
 
     // Location selection
     selectLocation: "अपना वर्तमान स्थान चुनें:",
@@ -160,65 +160,115 @@ const campusData = {
   en: {
     // List of all campus locations in English
     locations: [
-      "Main Building",
+      "Main Gate",
       "Library",
-      "Science Center",
-      "Student Union",
-      "Dormitory A",
-      "Dormitory B",
-      "Sports Complex",
-      "Cafeteria",
+      "Pharmacy Block",
+      "AKCNB",
+      "Aryabatta centre for computing",
+      "Girls Hostel",
+      "VIIT Store",
+      "Canteen/Cafeteria",
       "Parking Lot",
       "Administration Building",
+      "Pharmacy block"
     ],
 
     // Paths between locations with directions and milestones in English
     paths: [
       {
-        from: "Main Building",
+        from: "Main Gate",
         to: "Library",
         directions: [
-          "Exit Main Building through the front door",
-          "Turn right and walk straight for 100 meters",
-          "Pass by the fountain (milestone)",
-          "Turn left at the intersection",
-          "Walk straight for 50 meters",
-          "The Library will be on your right",
-        ],
-      },
-      {
-        from: "Main Building",
-        to: "Science Center",
-        directions: [
-          "Exit Main Building through the back door",
-          "Walk straight for 150 meters",
-          "Pass by the garden (milestone)",
-          "Turn right at the path junction",
-          "Walk straight for 100 meters",
-          "The Science Center will be directly in front of you",
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Turn Right and walk until you see steps((you will pass py rector cabin))",
+          "Turn left and take stairs to the next floor",
+          "The Library will be on your front named Vignanadhara",
         ],
       },
       {
         from: "Library",
-        to: "Student Union",
+        to: "Main Gate",
         directions: [
-          "Exit the Library through the main entrance",
-          "Turn right and walk straight for 80 meters",
-          "Pass by the statue (milestone)",
-          "Turn left at the crosswalk",
-          "Walk straight for 70 meters",
-          "The Student Union will be on your left",
+          "Take the stairs to the first floor",
+          "Turn right and walk straight 10 meters((you will pass by Rector cabin and Chairman cabin))",
+          "you will see a junction in y shape(milestone)",
+          "Turn left and walk straight 5 meters",
+          "Then your destination will be on your front",
         ],
       },
       {
-        from: "Student Union",
-        to: "Cafeteria",
+        from: "Main Gate",
+        to: "Aryabatta centre for computing",
         directions: [
-          "Exit the Student Union through the side door",
-          "Turn right and walk straight for 50 meters",
-          "Pass by the bulletin board (milestone)",
-          "Continue straight for another 30 meters",
-          "The Cafeteria will be directly in front of you",
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Turn Right and walk until you see steps((you will pass py rector cabin))",
+          "Turn left and take stairs to the 3rd floor",
+          "The your destination will be on your front.",
+        ],
+      },
+      {
+        from: "Main Gate",
+        to: "AKCNB",
+        directions: [
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Turn Right and walk until you see steps((you will pass py rector cabin))",
+          "Turn left and take stairs to the 4th floor",
+          "Then your destination will be on your front.",
+        ],
+      },
+      {
+        from: "Main Gate",
+        to: "Canteen/Cafeteria",
+        directions: [
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Now Walk straight 5 meters",
+          "Turn right",
+          "Then your destination will be on your front named Annapurna canteen.",
+        ],
+      },
+      {
+        from: "Main Gate",
+        to: "Pharmacy Block",
+        directions: [
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Now Walk straight 15 meters and take 2nd left",
+          "Then your destination will be on your front.",
+        ],
+      },
+      {
+        from: "Main Gate",
+        to: "Girls Hostel",
+        directions: [
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Now Walk straight 20 meters((you will pass by cafeteria and pharmacy block))",
+          "Then your destination will be on your front.",
+        ],
+      },
+      {
+        from: "Main Gate",
+        to: "VIIT Store",
+        directions: [
+          "Walk straight 20m",
+          "you will see a junction in Y shape(milestone)",
+          "Now Walk straight 20 meters((you will pass by cafeteria and pharmacy block))",
+          "Then your destination will be on your front.",
+        ],
+      },
+      {
+        from: "AKCNB",
+        to: "Main gate",
+        directions: [
+          "Walk ",
+          "you will see a junction in Y shape(milestone)",
+          "Turn Right and walk until you see steps((you will pass py rector cabin))",
+          "Turn left and take stairs to the 3rd floor",
+          "The your destination will be on your front.",
         ],
       },
     ],
@@ -358,7 +408,6 @@ const campusData = {
     ],
   },
 }
-
 // Add common functions to each language's data
 Object.keys(campusData).forEach((lang) => {
   campusData[lang].findPath = function (from, to) {
@@ -369,44 +418,32 @@ Object.keys(campusData).forEach((lang) => {
         (p.from.toLowerCase() === to.toLowerCase() && p.to.toLowerCase() === from.toLowerCase()),
     )
 
-    // If direct path found, return it (reverse if needed)
+    // If direct path found, return it without reversing
     if (path) {
+      // If the path is in the correct direction, return it as is
+      if (path.from.toLowerCase() === from.toLowerCase() && path.to.toLowerCase() === to.toLowerCase()) {
+        return path
+      }
+
+      // If we have a path in the opposite direction, check if there's a specific path defined
+      // for the requested direction before attempting to reverse
+      const directPath = this.paths.find(
+        (p) => p.from.toLowerCase() === from.toLowerCase() && p.to.toLowerCase() === to.toLowerCase(),
+      )
+
+      if (directPath) {
+        return directPath
+      }
+
+      // Only if no direct path exists, use the reverse path
       if (path.from.toLowerCase() === to.toLowerCase() && path.to.toLowerCase() === from.toLowerCase()) {
-        // Need to reverse the directions
         return {
-          from: path.to,
-          to: path.from,
-          directions: [...path.directions].reverse().map((dir) => {
-            // Swap left/right and some other direction words based on language
-            if (lang === "en") {
-              return dir
-                .replace(/Turn left/g, "TEMP_RIGHT")
-                .replace(/Turn right/g, "Turn left")
-                .replace(/TEMP_RIGHT/g, "Turn right")
-                .replace(/on your left/g, "TEMP_RIGHT")
-                .replace(/on your right/g, "on your left")
-                .replace(/TEMP_RIGHT/g, "on your right")
-            } else if (lang === "hi") {
-              return dir
-                .replace(/बाएं मुड़ें/g, "TEMP_RIGHT")
-                .replace(/दाएं मुड़ें/g, "बाएं मुड़ें")
-                .replace(/TEMP_RIGHT/g, "दाएं मुड़ें")
-                .replace(/बाईं ओर/g, "TEMP_RIGHT")
-                .replace(/दाईं ओर/g, "बाईं ओर")
-                .replace(/TEMP_RIGHT/g, "दाईं ओर")
-            } else if (lang === "te") {
-              return dir
-                .replace(/ఎడమవైపు తిరగండి/g, "TEMP_RIGHT")
-                .replace(/కుడివైపు తిరగండి/g, "ఎడమవైపు తిరగండి")
-                .replace(/TEMP_RIGHT/g, "కుడివైపు తిరగండి")
-                .replace(/ఎడమవైపున/g, "TEMP_RIGHT")
-                .replace(/కుడివైపున/g, "ఎడమవైపున")
-                .replace(/TEMP_RIGHT/g, "కుడివైపున")
-            }
-            return dir
-          }),
+          from: from,
+          to: to,
+          directions: path.directions, // Use the original directions without reversing
         }
       }
+
       return path
     }
 
