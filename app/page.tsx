@@ -53,8 +53,8 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType>({
   language: "en",
-  setLanguage: (_lang: string) => {},
-  t: (_key: string) => "",
+  setLanguage: (_) => {},
+  t: (_) => "",
   getCampusData: () => ({ locations: [], paths: [] }),
 })
 
@@ -754,7 +754,7 @@ function CampusNavigationBot() {
         },
       ])
     }
-  }, [t]) // Only depend on translation function
+  }, [t,messages]) // Only depend on translation function
 
   // Separate useEffect for location/destination updates
   useEffect(() => {
