@@ -9,24 +9,60 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 
-// Language context
-const LanguageContext = createContext({
+// Define types for our data structures
+type Direction = string;
+type Location = string;
+
+interface Path {
+  from: string;
+  to: string;
+  directions: Direction[];
+}
+
+interface CampusDataLanguage {
+  locations: Location[];
+  paths: Path[];
+  findPath?: (from: string, to: string) => Path | null;
+  getMilestones?: (directions: Direction[]) => string[];
+}
+
+interface CampusDataType {
+  [key: string]: CampusDataLanguage;
+}
+
+interface TranslationLanguage {
+  [key: string]: string;
+}
+
+interface Translations {
+  [key: string]: TranslationLanguage;
+}
+
+interface Message {
+  sender: 'bot' | 'user';
+  text: string;
+}
+
+// Update context type
+interface LanguageContextType {
+  language: string;
+  setLanguage: (lang: string) => void;
+  t: (key: string, replacements?: Record<string, string>) => string;
+  getCampusData: () => CampusDataLanguage;
+}
+
+const LanguageContext = createContext<LanguageContextType>({
   language: "en",
-  setLanguage: (lang) => {},
-  t: (key) => "",
-  getCampusData: () => ({
-    locations: [],
-    paths: [],
-    findPath: () => null,
-    getMilestones: () => [],
-  }),
+  setLanguage: (_lang: string) => {},
+  t: (_key: string) => "",
+  getCampusData: () => ({ locations: [], paths: [] }),
 })
 
 // Translations
-const translations = {
+const translations: Translations = {
   en: {
     // App title and descriptions
-    appTitle: "Campus Navigation",
+    appTitle: "VIIT Campus Navigation",
     appDescription: "Find your way around campus",
 
     // Initial messages
@@ -156,7 +192,7 @@ const translations = {
 }
 
 // Campus data structure with locations and paths for each language
-const campusData = {
+const campusData: CampusDataType = {
   en: {
     // List of all campus locations in English
     locations: [
@@ -408,9 +444,10 @@ const campusData = {
     ],
   },
 }
+
 // Add common functions to each language's data
-Object.keys(campusData).forEach((lang) => {
-  campusData[lang].findPath = function (from, to) {
+Object.keys(campusData).forEach((lang: string) => {
+  campusData[lang].findPath = function (from: string, to: string): Path | null {
     // First try to find a direct path
     const path = this.paths.find(
       (p) =>
@@ -451,7 +488,7 @@ Object.keys(campusData).forEach((lang) => {
     return null
   }
 
-  campusData[lang].getMilestones = (directions) => {
+  campusData[lang].getMilestones = (directions: Direction[]): string[] => {
     const milestoneText = lang === "en" ? "milestone" : lang === "hi" ? "मील का पत्थर" : "మైలురాయి"
     return directions
       .filter((dir) => dir.includes(`(${milestoneText})`))
@@ -462,11 +499,15 @@ Object.keys(campusData).forEach((lang) => {
 })
 
 // Language Provider component
-function LanguageProvider({ children }) {
-  const [language, setLanguage] = useState("en")
+interface LanguageProviderProps {
+  children: React.ReactNode;
+}
+
+function LanguageProvider({ children }: LanguageProviderProps) {
+  const [language, setLanguage] = useState<string>("en")
 
   // Translation function
-  const t = (key, replacements = {}) => {
+  const t = (key: string, replacements: Record<string, string> = {}): string => {
     let text = translations[language][key] || key
 
     // Replace placeholders with actual values
@@ -479,7 +520,7 @@ function LanguageProvider({ children }) {
   }
 
   // Get campus data for current language
-  const getCampusData = () => {
+  const getCampusData = (): CampusDataLanguage => {
     return campusData[language] || campusData.en
   }
 
@@ -523,7 +564,12 @@ function LanguageSwitcher() {
 }
 
 // Message component
-function Message({ message, isUser }) {
+interface MessageProps {
+  message: string;
+  isUser: boolean;
+}
+
+function Message({ message, isUser }: MessageProps) {
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}>
       {!isUser && (
@@ -550,7 +596,13 @@ function Message({ message, isUser }) {
 }
 
 // Location Button Grid component
-function LocationButtonGrid({ locations, onSelect, filterText = "" }) {
+interface LocationButtonGridProps {
+  locations: Location[];
+  onSelect: (location: string) => void;
+  filterText?: string;
+}
+
+function LocationButtonGrid({ locations, onSelect, filterText = "" }: LocationButtonGridProps) {
   // Sort locations based on the filter text
   const sortedLocations = [...locations].sort((a, b) => {
     const aStartsWithFilter = a.toLowerCase().startsWith(filterText.toLowerCase())
@@ -590,7 +642,13 @@ function LocationButtonGrid({ locations, onSelect, filterText = "" }) {
 }
 
 // Navigation Controls component
-function NavigationControls({ onNext, onMilestoneReached, isWaitingForMilestone }) {
+interface NavigationControlsProps {
+  onNext: () => void;
+  onMilestoneReached: () => void;
+  isWaitingForMilestone: boolean;
+}
+
+function NavigationControls({ onNext, onMilestoneReached, isWaitingForMilestone }: NavigationControlsProps) {
   const { t } = useLanguage()
 
   return (
@@ -611,7 +669,12 @@ function NavigationControls({ onNext, onMilestoneReached, isWaitingForMilestone 
 }
 
 // End Navigation Options component
-function EndNavigationOptions({ onNewDirections, onEndChat }) {
+interface EndNavigationOptionsProps {
+  onNewDirections: () => void;
+  onEndChat: () => void;
+}
+
+function EndNavigationOptions({ onNewDirections, onEndChat }: EndNavigationOptionsProps) {
   const { t } = useLanguage()
 
   return (
@@ -629,16 +692,21 @@ function EndNavigationOptions({ onNewDirections, onEndChat }) {
 }
 
 // Progress indicator component
-function ProgressIndicator({ currentStep, totalSteps }) {
+interface ProgressIndicatorProps {
+  currentStep: number;
+  totalSteps: number;
+}
+
+function ProgressIndicator({ currentStep, totalSteps }: ProgressIndicatorProps) {
   const { t } = useLanguage()
-  const progress = (currentStep / totalSteps) * 100
+  const progress = Math.round((currentStep / totalSteps) * 100).toString() // Convert to string
 
   return (
     <div className="w-full mb-4">
       <div className="flex justify-between text-xs text-muted-foreground mb-1">
         <span>{t("progress")}</span>
         <span>
-          {currentStep} {t("ofSteps", { total: totalSteps })}
+          {currentStep} {t("ofSteps", { total: totalSteps.toString() })}
         </span>
       </div>
       <div className="w-full bg-muted rounded-full h-2">
@@ -654,7 +722,7 @@ function ProgressIndicator({ currentStep, totalSteps }) {
 // Update the CampusNavigationBot component to handle text input and filtering
 function CampusNavigationBot() {
   const { t, language, getCampusData } = useLanguage()
-  const [messages, setMessages] = useState([
+  const [messages, setMessages] = useState<Message[]>([
     {
       sender: "bot",
       text: t("welcomeMessage"),
@@ -663,10 +731,9 @@ function CampusNavigationBot() {
   const [input, setInput] = useState("")
   const [currentLocation, setCurrentLocation] = useState("")
   const [destination, setDestination] = useState("")
-  const [currentPath, setCurrentPath] = useState(null)
+  const [currentPath, setCurrentPath] = useState<Path | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [waitingForMilestone, setWaitingForMilestone] = useState(false)
-  const [conversationState, setConversationState] = useState("asking_location")
   const [showLocationSelection, setShowLocationSelection] = useState(true)
   const [showDestinationSelection, setShowDestinationSelection] = useState(false)
   const [showNavigationControls, setShowNavigationControls] = useState(false)
@@ -674,43 +741,48 @@ function CampusNavigationBot() {
   const [locationFilter, setLocationFilter] = useState("")
   const [destinationFilter, setDestinationFilter] = useState("")
 
-  const messagesEndRef = useRef(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Update welcome message when language changes
   useEffect(() => {
-    if (messages.length === 1 && messages[0].sender === "bot") {
+    const welcomeMessage = t("welcomeMessage")
+    if (messages.length === 1 && messages[0].sender === "bot" && messages[0].text !== welcomeMessage) {
       setMessages([
         {
           sender: "bot",
-          text: t("welcomeMessage"),
+          text: welcomeMessage,
         },
       ])
     }
+  }, [t]) // Only depend on translation function
 
-    // Reset the UI when language changes to avoid inconsistencies
-    if (currentLocation || destination) {
-      // Get the current campus data
-      const data = getCampusData()
+  // Separate useEffect for location/destination updates
+  useEffect(() => {
+    if (!currentLocation && !destination) return
 
-      // Try to find equivalent locations in the new language
-      const locationIndex = campusData.en.locations.findIndex(
-        (loc) => loc.toLowerCase() === currentLocation.toLowerCase(),
-      )
+    const data = getCampusData()
+    const locationIndex = campusData.en.locations.findIndex(
+      (loc) => loc.toLowerCase() === currentLocation.toLowerCase()
+    )
 
-      const destinationIndex = destination
-        ? campusData.en.locations.findIndex((loc) => loc.toLowerCase() === destination.toLowerCase())
-        : -1
+    const destinationIndex = destination
+      ? campusData.en.locations.findIndex((loc) => loc.toLowerCase() === destination.toLowerCase())
+      : -1
 
-      // Update current location and destination with translated versions
-      if (locationIndex >= 0 && locationIndex < data.locations.length) {
-        setCurrentLocation(data.locations[locationIndex])
-      }
-
-      if (destinationIndex >= 0 && destinationIndex < data.locations.length) {
-        setDestination(data.locations[destinationIndex])
+    if (locationIndex >= 0 && locationIndex < data.locations.length) {
+      const newLocation = data.locations[locationIndex]
+      if (newLocation !== currentLocation) {
+        setCurrentLocation(newLocation)
       }
     }
-  }, [language])
+
+    if (destinationIndex >= 0 && destinationIndex < data.locations.length) {
+      const newDestination = data.locations[destinationIndex]
+      if (newDestination !== destination) {
+        setDestination(newDestination)
+      }
+    }
+  }, [language, currentLocation, destination, getCampusData])
 
   // Auto-scroll to bottom of messages
   useEffect(() => {
@@ -731,7 +803,7 @@ function CampusNavigationBot() {
   }, [messages])
 
   // Handle location selection
-  const handleLocationSelect = (location) => {
+  const handleLocationSelect = (location: string) => {
     setCurrentLocation(location)
     setShowLocationSelection(false)
     setLocationFilter("")
@@ -742,12 +814,11 @@ function CampusNavigationBot() {
       { sender: "bot", text: t("greatLocation", { location }) },
     ])
 
-    setConversationState("asking_destination")
     setShowDestinationSelection(true)
   }
 
   // Handle destination selection
-  const handleDestinationSelect = (destination) => {
+  const handleDestinationSelect = (destination: string) => {
     if (destination === currentLocation) {
       setMessages((prev) => [...prev, { sender: "bot", text: t("alreadyThere") }])
       return
@@ -760,6 +831,11 @@ function CampusNavigationBot() {
     setMessages((prev) => [...prev, { sender: "user", text: destination }])
 
     const data = getCampusData()
+    if (!data.findPath) {
+      console.error("findPath method is not defined")
+      return
+    }
+
     const path = data.findPath(currentLocation, destination)
 
     if (path) {
@@ -802,8 +878,6 @@ function CampusNavigationBot() {
           },
         ])
       }
-
-      setConversationState("giving_directions")
     } else {
       setMessages((prev) => [
         ...prev,
@@ -818,6 +892,8 @@ function CampusNavigationBot() {
 
   // Handle next direction
   const handleNextDirection = () => {
+    if (!currentPath) return
+
     // Move to next direction
     const nextStep = currentStep + 1
 
@@ -868,7 +944,6 @@ function CampusNavigationBot() {
       setDestination("")
       setCurrentPath(null)
       setCurrentStep(0)
-      setConversationState("asking_destination")
       setShowNavigationControls(false)
       setShowEndOptions(true)
     }
@@ -931,7 +1006,6 @@ function CampusNavigationBot() {
     setCurrentPath(null)
     setCurrentStep(0)
     setWaitingForMilestone(false)
-    setConversationState("asking_location")
     setShowLocationSelection(true)
     setShowDestinationSelection(false)
     setShowNavigationControls(false)
@@ -941,7 +1015,7 @@ function CampusNavigationBot() {
   }
 
   // Handle input change
-  const handleInputChange = (e) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     setInput(value)
 
@@ -954,7 +1028,7 @@ function CampusNavigationBot() {
   }
 
   // Process text input for chat
-  const processTextInput = (text) => {
+  const processTextInput = (text: string) => {
     const data = getCampusData()
     const lowerText = text.toLowerCase()
 
@@ -1046,7 +1120,7 @@ function CampusNavigationBot() {
   }
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim()) return
 
